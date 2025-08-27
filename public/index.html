@@ -7,38 +7,177 @@
   <script src="https://sdk.pi.network/pi-sdk.js"></script>
   <script>Pi.init({ version: "2.0", sandbox: true })</script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500&family=Inter&display=swap');
-    body { margin: 0; font-family: 'Inter', sans-serif; background-color: #121212; color: #FFFFFF; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-    .container { text-align: center; max-width: 400px; padding: 20px; z-index: 1; }
-    .title { font-family: 'Orbitron', sans-serif; font-size: 2rem; color: #00FFFF; margin-bottom: 20px; }
-    .pot-display { position: relative; margin: 20px auto; width: 200px; height: 200px; }
-    .pot-ring { width: 100%; height: 100%; border: 5px solid #8A2BE2; border-radius: 50%; animation: pulse 2s infinite; }
-    .pot-value { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; color: #FF00FF; font-family: 'Orbitron', sans-serif; }
-    .countdown label { font-size: 0.9rem; color: #CCCCCC; }
-    #timer { font-size: 1.5rem; color: #00FFFF; margin: 10px 0; font-family: 'Orbitron', sans-serif; }
-    .cta-button { background: linear-gradient(90deg, #00FFFF, #FF00FF); border: none; color: white; padding: 12px 24px; font-size: 1rem; border-radius: 30px; cursor: pointer; animation: pulse 1.5s infinite; margin-top: 10px; }
-    .entry-info { margin-top: 15px; font-size: 1rem; color: #CCCCCC; }
-    .referral { margin-top: 20px; }
-    .referral label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: #CCCCCC; }
-    .referral input { padding: 8px; width: 80%; border-radius: 8px; border: 1px solid #8A2BE2; background-color: #000; color: #FFFFFF; }
-    .referral-button { margin-top: 10px; padding: 8px 16px; background: linear-gradient(90deg, #00FFFF, #FF00FF); border: none; border-radius: 20px; color: white; cursor: pointer; font-size: 0.9rem; }
-    .referral-status { margin-top: 10px; font-size: 0.9rem; color: #00FFAA; min-height: 1.2em; }
-    #particles-js { position: absolute; width: 100%; height: 100%; top: 0; left: 0; z-index: 0; }
-    @keyframes pulse { 0% { box-shadow: 0 0 5px #00FFFF; } 50% { box-shadow: 0 0 20px #FF00FF; } 100% { box-shadow: 0 0 5px #00FFFF; } }
+    @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;700&display=swap');
+
+    :root {
+      --background-color: #0c0a1a;
+      --primary-glow: #a885ed;
+      --secondary-glow: #f2d57e;
+      --text-color: #e0e0e0;
+      --font-family: 'Exo 2', sans-serif;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--font-family);
+      background-color: var(--background-color);
+      color: var(--text-color);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    #nebula-background {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      min-width: 100%;
+      min-height: 100%;
+      width: auto;
+      height: auto;
+      transform: translateX(-50%) translateY(-50%);
+      z-index: -1;
+      background: url('https://www.nasa.gov/sites/default/files/thumbnails/image/j2m-shareable.jpg') no-repeat center center;
+      background-size: cover;
+      animation: slow-pan 120s linear infinite alternate;
+    }
+
+    @keyframes slow-pan {
+      from { transform: translateX(-45%) translateY(-45%) scale(1.2); }
+      to { transform: translateX(-55%) translateY(-55%) scale(1.2); }
+    }
+
+    .container {
+      text-align: center;
+      max-width: 400px;
+      padding: 20px;
+      z-index: 1;
+      background: rgba(12, 10, 26, 0.6);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      border: 1px solid rgba(168, 133, 237, 0.2);
+      box-shadow: 0 0 40px rgba(168, 133, 237, 0.2);
+    }
+
+    .title {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 0 10px var(--primary-glow), 0 0 20px var(--primary-glow);
+      margin-bottom: 30px;
+    }
+
+    .pot-display {
+      position: relative;
+      margin: 30px auto;
+      width: 220px;
+      height: 220px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .pot-core {
+      width: 70%;
+      height: 70%;
+      background: radial-gradient(circle, var(--secondary-glow) 0%, var(--primary-glow) 60%, transparent 100%);
+      border-radius: 50%;
+      animation: core-pulse 4s ease-in-out infinite;
+      box-shadow: 0 0 20px var(--primary-glow), 0 0 40px var(--secondary-glow);
+    }
     
-    /* Styles for the Payment Modal */
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
-    .modal-content { background: #1e1e1e; padding: 20px; border-radius: 15px; border: 1px solid #8A2BE2; width: 90%; max-width: 350px; box-shadow: 0 0 25px #FF00FF; }
-    .modal-title { font-family: 'Orbitron', sans-serif; font-size: 1.5rem; color: #00FFFF; margin-bottom: 20px; }
-    .tier-button { display: block; width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; border: 1px solid #00FFFF; background-color: #121212; color: #FFFFFF; font-size: 1rem; cursor: pointer; text-align: left; }
-    .tier-button:hover { background-color: #8A2BE2; }
-    .tier-entries { font-weight: bold; color: #00FFFF; }
-    .tier-bonus { font-size: 0.8rem; color: #00FFAA; }
-    .modal-close { margin-top: 15px; color: #CCCCCC; cursor: pointer; }
+    @keyframes core-pulse {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+
+    .pot-value {
+      position: absolute;
+      font-size: 2rem;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 0 5px #000;
+    }
+
+    .countdown label { font-size: 1rem; color: var(--text-color); font-weight: 300; }
+    #timer { font-size: 2rem; color: #fff; margin: 10px 0 20px 0; font-weight: 700; }
+
+    .cta-button {
+      background: linear-gradient(90deg, var(--primary-glow), var(--secondary-glow));
+      border: none;
+      color: #0c0a1a;
+      padding: 15px 30px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      border-radius: 50px;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .cta-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px var(--secondary-glow);
+    }
+
+    .entry-info { margin-top: 20px; font-size: 1.1rem; }
+    .referral { margin-top: 25px; }
+    .referral input {
+      padding: 10px;
+      width: 80%;
+      border-radius: 8px;
+      border: 1px solid var(--primary-glow);
+      background-color: rgba(0,0,0,0.5);
+      color: #fff;
+      font-family: var(--font-family);
+    }
+    .referral-button {
+      margin-top: 10px;
+      padding: 8px 16px;
+      background: var(--primary-glow);
+      border: none;
+      border-radius: 20px;
+      color: #0c0a1a;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .referral-status { min-height: 1.2em; }
+
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(12, 10, 26, 0.8);
+      backdrop-filter: blur(5px);
+      display: none; justify-content: center; align-items: center; z-index: 1000;
+      opacity: 0; transition: opacity 0.3s ease;
+    }
+    .modal-overlay.visible { display: flex; opacity: 1; }
+    .modal-content {
+      background: #1e1e1e; padding: 30px; border-radius: 15px;
+      border: 1px solid var(--primary-glow);
+      width: 90%; max-width: 380px;
+      box-shadow: 0 0 50px var(--primary-glow);
+      transform: scale(0.9); transition: transform 0.3s ease;
+    }
+    .modal-overlay.visible .modal-content { transform: scale(1); }
+    .modal-title { font-size: 1.8rem; color: #fff; margin-bottom: 25px; text-shadow: 0 0 10px var(--secondary-glow); }
+    .tier-button {
+      display: block; width: 100%; padding: 20px; margin: 15px 0;
+      border-radius: 10px; border: 1px solid var(--primary-glow);
+      background-color: rgba(12, 10, 26, 0.5);
+      color: #fff; font-size: 1.1rem; cursor: pointer; text-align: left;
+      transition: background-color 0.3s ease, transform 0.3s ease;
+    }
+    .tier-button:hover { background-color: var(--primary-glow); color: #0c0a1a; transform: scale(1.02); }
+    .tier-entries { font-weight: 700; color: var(--secondary-glow); }
+    .tier-bonus { font-size: 0.9rem; color: #fff; opacity: 0.8; }
+    .modal-close { margin-top: 20px; color: var(--text-color); cursor: pointer; font-weight: 300; }
   </style>
 </head>
 <body>
-  <div id="particles-js"></div>
+  <div id="nebula-background"></div>
 
   <div id="loginContainer" class="container">
     <h1 class="title">SevenO'Clock Drop</h1>
@@ -47,41 +186,33 @@
 
   <div id="appContainer" class="container" style="display: none;">
     <h1 class="title">SevenO'Clock Drop</h1>
-    <div class="pot-display"><div class="pot-ring"></div><div class="pot-value" id="potValue">... π</div></div>
+    <div class="pot-display">
+      <div class="pot-core"></div>
+      <div class="pot-value" id="potValue">... π</div>
+    </div>
     <div class="countdown"><label>NEXT DROP IN</label><div id="timer">--:--:--</div></div>
-    <button type="button" id="getEntriesButton" class="cta-button">GET ENTRIES</button>
+    <button type="button" id="getEntriesButton" class="cta-button">Get Entries</button>
     <div class="entry-info"><span>YOUR ENTRIES: <strong id="userEntries">--</strong></span></div>
     <div class="referral">
-      <label for="referralCode">Referral Code</label><input type="text" id="referralCode" placeholder="Enter code for 5 bonus entries" /><button type="button" class="referral-button" onclick="applyReferral()">Apply Code</button><div id="referralStatus" class="referral-status"></div>
+      <label for="referralCode">Referral Code</label><input type="text" id="referralCode" placeholder="Enter code for bonus entries" /><button type="button" class="referral-button" onclick="applyReferral()">Apply</button><div id="referralStatus" class="referral-status"></div>
     </div>
   </div>
 
-  <!-- Payment Modal HTML -->
   <div id="paymentModal" class="modal-overlay">
     <div class="modal-content">
-      <h2 class="modal-title">Choose Your Tier</h2>
-      <button class="tier-button" onclick="createPiPayment('1.00')">
-        <span class="tier-entries">10 Entries</span> for 1.00 π
-      </button>
-      <button class="tier-button" onclick="createPiPayment('5.00')">
-        <span class="tier-entries">50 Entries</span> for 5.00 π <br>
-        <span class="tier-bonus">+ 10 Bonus Entries!</span>
-      </button>
-      <button class="tier-button" onclick="createPiPayment('10.00')">
-        <span class="tier-entries">100 Entries</span> for 10.00 π <br>
-        <span class="tier-bonus">+ 30 Bonus Entries!</span>
-      </button>
-      <div id="modalCloseButton" class="modal-close">Close</div>
+      <h2 class="modal-title">Select Tier</h2>
+      <button class="tier-button" onclick="createPiPayment('1.00')"><span class="tier-entries">10 Entries</span> for 1.00 π</button>
+      <button class="tier-button" onclick="createPiPayment('5.00')"><span class="tier-entries">60 Entries</span> for 5.00 π <br><span class="tier-bonus">(Includes 10 Bonus Entries)</span></button>
+      <button class="tier-button" onclick="createPiPayment('10.00')"><span class="tier-entries">130 Entries</span> for 10.00 π <br><span class="tier-bonus">(Includes 30 Bonus Entries)</span></button>
+      <div id="modalCloseButton" class="modal-close">Cancel</div>
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
   <script>
-    particlesJS("particles-js", { /* ... particles.js config from before ... */ });
-  </script>
-
-  <script>
+    // --- CONFIG & STATE ---
     const API_BASE_URL = ''; let currentUser = null; let countdownInterval;
+
+    // --- DOM ELEMENTS ---
     const loginContainer = document.getElementById('loginContainer');
     const appContainer = document.getElementById('appContainer');
     const loginButton = document.getElementById('loginButton');
@@ -89,22 +220,25 @@
     const paymentModal = document.getElementById('paymentModal');
     const modalCloseButton = document.getElementById('modalCloseButton');
 
+    // --- AUTHENTICATION ---
     async function authenticateWithPi() {
       try {
         const scopes = ['username', 'payments'];
-        Pi.authenticate(scopes, onAuthComplete).then(auth => {
+        Pi.authenticate(scopes, onPaymentComplete).then(auth => {
           currentUser = auth.user;
           loginContainer.style.display = 'none';
           appContainer.style.display = 'block';
           initializeApp();
-        }).catch(error => { alert('Authentication failed. Please try again.'); });
-      } catch (err) { alert('Could not connect to the Pi Network. Please try again later.'); }
+        }).catch(err => { alert('Login failed. Please try again.'); });
+      } catch (err) { alert('Could not connect to Pi Network. Please try again later.'); }
     }
 
+    // --- CORE APP LOGIC ---
     async function initializeApp() {
       if (!currentUser) return;
       try {
         const response = await fetch(`${API_BASE_URL}/api/app-data?uid=${currentUser.uid}`);
+        if (!response.ok) throw new Error('Server connection failed');
         const data = await response.json();
         updateUI(data);
       } catch (error) { document.getElementById('potValue').textContent = "Error"; }
@@ -116,13 +250,24 @@
       startCountdown(data.nextDropTimestamp);
     }
 
-    function startCountdown(targetTimestamp) { /* ... same as before ... */ }
+    function startCountdown(targetTimestamp) {
+      if (countdownInterval) clearInterval(countdownInterval);
+      const timerElement = document.getElementById('timer');
+      countdownInterval = setInterval(() => {
+        const diff = targetTimestamp - Date.now();
+        if (diff < 0) { timerElement.textContent = "00:00:00"; clearInterval(countdownInterval); return; }
+        const hours = Math.floor(diff / 3600000);
+        const minutes = Math.floor((diff % 3600000) / 60000);
+        const seconds = Math.floor((diff % 60000) / 1000);
+        timerElement.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      }, 1000);
+    }
+
     async function applyReferral() { /* ... same as before ... */ }
 
-    // --- NEW PAYMENT LOGIC ---
-    function onAuthComplete({ payment }) {
-      // This function is called by the Pi SDK after a payment is completed.
-      // We will now send the payment data to our backend for verification.
+    // --- PAYMENT LOGIC ---
+    function onPaymentComplete(payment) {
+      if (!payment) return;
       fetch(`${API_BASE_URL}/api/complete-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -132,16 +277,15 @@
           alert('Payment successful! Your new entries have been added.');
           document.getElementById('userEntries').textContent = data.newEntryCount;
         } else {
-          alert('Payment verification failed. Please contact support.');
+          alert(`Payment verification failed: ${data.message}`);
         }
       }).catch(err => alert('An error occurred while verifying your payment.'));
     }
 
     async function createPiPayment(amount) {
       if (!currentUser) return alert("Please log in first.");
-      paymentModal.style.display = 'none'; // Hide the modal
+      paymentModal.classList.remove('visible');
       try {
-        // First, we ask our backend to create a payment record.
         const response = await fetch(`${API_BASE_URL}/api/create-payment`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -150,11 +294,9 @@
         const paymentData = await response.json();
         if (!paymentData.success) throw new Error(paymentData.message);
 
-        // Then, we use the Pi SDK to show the payment screen to the user.
         Pi.createPayment(paymentData.piPayment, {
-          // These are the callback functions the Pi SDK will use.
-          onReadyForServerApproval: (paymentId) => onAuthComplete({ payment: { identifier: paymentId, transaction: {} } }),
-          onReadyForServerCompletion: (paymentId, txid) => onAuthComplete({ payment: { identifier: paymentId, transaction: { txid } } }),
+          onReadyForServerApproval: (paymentId) => onPaymentComplete({ identifier: paymentId, transaction: {} }),
+          onReadyForServerCompletion: (paymentId, txid) => onPaymentComplete({ identifier: paymentId, transaction: { txid } }),
           onCancel: (paymentId) => alert("Payment cancelled."),
           onError: (error, payment) => alert("An error occurred with the payment.")
         });
@@ -166,8 +308,8 @@
     // --- EVENT LISTENERS ---
     document.addEventListener('DOMContentLoaded', () => {
       loginButton.addEventListener('click', authenticateWithPi);
-      getEntriesButton.addEventListener('click', () => { paymentModal.style.display = 'flex'; });
-      modalCloseButton.addEventListener('click', () => { paymentModal.style.display = 'none'; });
+      getEntriesButton.addEventListener('click', () => { paymentModal.classList.add('visible'); });
+      modalCloseButton.addEventListener('click', () => { paymentModal.classList.remove('visible'); });
     });
   </script>
 </body>
