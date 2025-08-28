@@ -5,12 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SevenO'Clock Drop</title>
   
-  <!-- Pi SDK Scripts - MOVED TO THE HEAD FOR PROPER LOADING -->
+  <!-- Pi SDK Scripts are in the correct place -->
   <script src="https://sdk.pi.network/pi-sdk.js"></script>
-  <script>Pi.init({ version: "2.0", sandbox: true })</script>
-
+  
   <style>
-    /* All the CSS code is exactly the same as before... */
+    /* All the CSS is the same, but with one addition for the disabled button */
     @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;700&display=swap');
     :root { --background-color: #0c0a1a; --primary-glow: #a885ed; --secondary-glow: #f2d57e; --text-color: #e0e0e0; --font-family: 'Exo 2', sans-serif; }
     body { margin: 0; font-family: var(--font-family); background-color: var(--background-color); color: var(--text-color); display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
@@ -24,8 +23,10 @@
     .pot-value { position: absolute; font-size: 2rem; font-weight: 700; color: #fff; text-shadow: 0 0 5px #000; }
     .countdown label { font-size: 1rem; color: var(--text-color); font-weight: 300; }
     #timer { font-size: 2rem; color: #fff; margin: 10px 0 20px 0; font-weight: 700; }
-    .cta-button { background: linear-gradient(90deg, var(--primary-glow), var(--secondary-glow)); border: none; color: #0c0a1a; padding: 15px 30px; font-size: 1.2rem; font-weight: 700; border-radius: 50px; cursor: pointer; margin-top: 10px; transition: transform 0.3s ease, box-shadow 0.3s ease; }
+    .cta-button { background: linear-gradient(90deg, var(--primary-glow), var(--secondary-glow)); border: none; color: #0c0a1a; padding: 15px 30px; font-size: 1.2rem; font-weight: 700; border-radius: 50px; cursor: pointer; margin-top: 10px; transition: all 0.3s ease; }
     .cta-button:hover { transform: scale(1.05); box-shadow: 0 0 20px var(--secondary-glow); }
+    /* NEW STYLE FOR DISABLED BUTTON */
+    .cta-button:disabled { background: #555; color: #999; cursor: not-allowed; transform: none; box-shadow: none; }
     .entry-info { margin-top: 20px; font-size: 1.1rem; }
     .referral { margin-top: 25px; }
     .referral input { padding: 10px; width: 80%; border-radius: 8px; border: 1px solid var(--primary-glow); background-color: rgba(0,0,0,0.5); color: #fff; font-family: var(--font-family); }
@@ -46,18 +47,16 @@
 <body>
   <div id="nebula-background"></div>
 
-  <!-- The rest of the HTML is the same -->
   <div id="loginContainer" class="container">
     <h1 class="title">SevenO'Clock Drop</h1>
-    <button id="loginButton" class="cta-button">Login with Pi</button>
+    <!-- The button now starts as disabled -->
+    <button id="loginButton" class="cta-button" disabled>Connecting to Pi...</button>
   </div>
 
   <div id="appContainer" class="container" style="display: none;">
+    <!-- The rest of the app HTML is the same -->
     <h1 class="title">SevenO'Clock Drop</h1>
-    <div class="pot-display">
-      <div class="pot-core"></div>
-      <div class="pot-value" id="potValue">... π</div>
-    </div>
+    <div class="pot-display"><div class="pot-core"></div><div class="pot-value" id="potValue">... π</div></div>
     <div class="countdown"><label>NEXT DROP IN</label><div id="timer">--:--:--</div></div>
     <button type="button" id="getEntriesButton" class="cta-button">Get Entries</button>
     <div class="entry-info"><span>YOUR ENTRIES: <strong id="userEntries">--</strong></span></div>
@@ -67,6 +66,7 @@
   </div>
 
   <div id="paymentModal" class="modal-overlay">
+    <!-- The modal HTML is the same -->
     <div class="modal-content">
       <h2 class="modal-title">Select Tier</h2>
       <button class="tier-button" onclick="createPiPayment('1.00')"><span class="tier-entries">10 Entries</span> for 1.00 π</button>
@@ -76,47 +76,150 @@
     </div>
   </div>
 
-  <!-- The JavaScript is exactly the same as before -->
   <script>
-    const API_BASE_URL = ''; let currentUser = null; let countdownInterval;
+    // --- DOM ELEMENTS ---
     const loginContainer = document.getElementById('loginContainer');
     const appContainer = document.getElementById('appContainer');
     const loginButton = document.getElementById('loginButton');
-    const getEntriesButton = document.getElementById('getEntriesButton');
-    const paymentModal = document.getElementById('paymentModal');
-    const modalCloseButton = document.getElementById('modalCloseButton');
+    // ... other elements are the same
 
+    // --- NEW: INITIALIZATION LOGIC ---
+    // This code runs as soon as the page loads.
+    document.addEventListener('DOMContentLoaded', () => {
+      try {
+        // We initialize the Pi SDK here.
+        Pi.init({ version: "2.0", sandbox: true });
+        
+        // If Pi.init() succeeds, we enable the login button.
+        loginButton.disabled = false;
+        loginButton.textContent = 'Login with Pi';
+        
+        // We then attach the function to the button.
+        loginButton.addEventListener('click', authenticateWithPi);
+
+      } catch (err) {
+        // If Pi.init() fails, it means we are not in the Pi Browser.
+        // The button will remain disabled and show an error message.
+        console.error('Failed to initialize Pi SDK', err);
+        loginButton.textContent = 'Error: Use Pi Browser';
+        alert('This app must be run from the Pi Browser.');
+      }
+      
+      // Attach listeners for the rest of the app
+      const getEntriesButton = document.getElementById('getEntriesButton');
+      const paymentModal = document.getElementById('paymentModal');
+      const modalCloseButton = document.getElementById('modalCloseButton');
+      getEntriesButton.addEventListener('click', () => { paymentModal.classList.add('visible'); });
+      modalCloseButton.addEventListener('click', () => { paymentModal.classList.remove('visible'); });
+    });
+
+    // --- AUTHENTICATION ---
+    // This function is now only called when the button is clicked AND enabled.
     async function authenticateWithPi() {
       try {
         const scopes = ['username', 'payments'];
         const onAuthComplete = (auth) => {
-          currentUser = auth.user;
+          window.currentUser = auth.user;
           loginContainer.style.display = 'none';
           appContainer.style.display = 'block';
           initializeApp();
         };
         Pi.authenticate(scopes, onAuthComplete).catch(err => {
-          console.error(err);
-          alert('Login failed. Please check the console for errors and ensure you are in the Pi Browser.');
+          alert('Authentication was cancelled or failed.');
         });
       } catch (err) {
-        console.error(err);
-        alert('Could not connect to the Pi Network. Please ensure you are running this in the Pi Browser.');
+        // This catch is now a fallback, the main check is done at initialization.
+        alert('An unexpected error occurred during authentication.');
       }
     }
 
-    async function initializeApp() { /* ... same as before ... */ }
-    function updateUI(data) { /* ... same as before ... */ }
-    function startCountdown(targetTimestamp) { /* ... same as before ... */ }
-    async function applyReferral() { /* ... same as before ... */ }
-    function onPaymentComplete(payment) { /* ... same as before ... */ }
-    async function createPiPayment(amount) { /* ... same as before ... */ }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      loginButton.addEventListener('click', authenticateWithPi);
-      getEntriesButton.addEventListener('click', () => { paymentModal.classList.add('visible'); });
-      modalCloseButton.addEventListener('click', () => { paymentModal.classList.remove('visible'); });
-    });
+    // --- The rest of the JavaScript functions (initializeApp, updateUI, etc.) are the same ---
+    async function initializeApp() {
+        if (!window.currentUser) return;
+        try {
+            const response = await fetch(`/api/app-data?uid=${window.currentUser.uid}`);
+            if (!response.ok) throw new Error('Server connection failed');
+            const data = await response.json();
+            updateUI(data);
+        } catch (error) { document.getElementById('potValue').textContent = "Error"; }
+    }
+    function updateUI(data) {
+        document.getElementById('potValue').textContent = `${data.potValue} π`;
+        document.getElementById('userEntries').textContent = data.userEntries;
+        startCountdown(data.nextDropTimestamp);
+    }
+    function startCountdown(targetTimestamp) {
+        let countdownInterval = window.countdownInterval;
+        if (countdownInterval) clearInterval(countdownInterval);
+        const timerElement = document.getElementById('timer');
+        window.countdownInterval = setInterval(() => {
+            const diff = targetTimestamp - Date.now();
+            if (diff < 0) { timerElement.textContent = "00:00:00"; clearInterval(window.countdownInterval); return; }
+            const hours = Math.floor(diff / 3600000);
+            const minutes = Math.floor((diff % 3600000) / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            timerElement.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }, 1000);
+    }
+    async function applyReferral() {
+        const code = document.getElementById("referralCode").value.trim();
+        const status = document.getElementById("referralStatus");
+        if (!window.currentUser || !code) return;
+        try {
+            const response = await fetch(`/api/apply-referral`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: code, uid: window.currentUser.uid })
+            });
+            const result = await response.json();
+            status.textContent = result.message;
+            if (result.success) {
+                status.style.color = "#00FFAA";
+                document.getElementById('userEntries').textContent = result.newEntryCount;
+            } else {
+                status.style.color = "#FF4444";
+            }
+        } catch (error) {
+            status.textContent = 'Error connecting to server.';
+            status.style.color = "#FF4444";
+        }
+    }
+    function onPaymentComplete(payment) {
+        if (!payment) return;
+        fetch(`/api/complete-payment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentId: payment.identifier, txid: payment.transaction.txid })
+        }).then(res => res.json()).then(data => {
+            if (data.success) {
+                alert('Payment successful! Your new entries have been added.');
+                initializeApp(); // Re-fetch data to get the new entry count
+            } else {
+                alert(`Payment verification failed: ${data.message}`);
+            }
+        }).catch(err => alert('An error occurred while verifying your payment.'));
+    }
+    async function createPiPayment(amount) {
+        if (!window.currentUser) return alert("Please log in first.");
+        document.getElementById('paymentModal').classList.remove('visible');
+        try {
+            const response = await fetch(`/api/create-payment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: amount, uid: window.currentUser.uid })
+            });
+            const paymentData = await response.json();
+            if (!paymentData.success) throw new Error(paymentData.message);
+            Pi.createPayment(paymentData.piPayment, {
+                onReadyForServerApproval: (paymentId) => onPaymentComplete({ identifier: paymentId, transaction: {} }),
+                onReadyForServerCompletion: (paymentId, txid) => onPaymentComplete({ identifier: paymentId, transaction: { txid } }),
+                onCancel: (paymentId) => alert("Payment cancelled."),
+                onError: (error, payment) => alert("An error occurred with the payment.")
+            });
+        } catch (error) {
+            alert(`Error creating payment: ${error.message}`);
+        }
+    }
   </script>
 </body>
 </html>
