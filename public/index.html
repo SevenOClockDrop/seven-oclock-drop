@@ -3,186 +3,88 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SevenO'Clock Drop</title>
-  <script src="https://sdk.pi.network/pi-sdk.js"></script>
+  <title>Seven O'Clock Drop</title>
   <style>
-    /* [Your existing CSS remains unchanged] */
+    body {
+      margin: 0;
+      background: radial-gradient(circle at center, #0a0a0f, #000);
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    .title {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      margin-top: 20vh;
+      font-size: 3.5em;
+      font-weight: bold;
+      color: #fff;
+      text-shadow:
+        0 0 5px #8f00ff,
+        0 0 10px #8f00ff,
+        0 0 20px #00f0ff,
+        0 0 40px #00f0ff;
+      font-family: 'Brush Script MT', cursive;
+    }
+
+    .title span {
+      background: linear-gradient(45deg, #8f00ff, #00f0ff, #ff00c8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      position: relative;
+    }
+
+    .title span::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Crystal_Clear_app_kdiamond.svg/1024px-Crystal_Clear_app_kdiamond.svg.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      opacity: 0.2;
+      animation: sparkle 2s infinite linear;
+    }
+
+    @keyframes sparkle {
+      0% { opacity: 0.2; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.1); }
+      100% { opacity: 0.2; transform: scale(1); }
+    }
+
+    .coin {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background: radial-gradient(circle, gold, #b8860b);
+      border-radius: 50%;
+      box-shadow: 0 0 5px gold;
+      animation: fall linear infinite;
+    }
+
+    @keyframes fall {
+      0% { top: -50px; opacity: 1; transform: rotate(0deg); }
+      100% { top: 100vh; opacity: 0.5; transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
-  <div id="nebula-background"></div>
-
-  <div id="loginContainer" class="container">
-    <h1 class="title">SevenO'Clock Drop</h1>
-    <button id="loginButton" class="cta-button" disabled>Connecting to Pi...</button>
-  </div>
-
-  <div id="appContainer" class="container" style="display: none;">
-    <h1 class="title">SevenO'Clock Drop</h1>
-    <div class="pot-display"><div class="pot-core"></div><div class="pot-value" id="potValue">... π</div></div>
-    <div class="countdown"><label>NEXT DROP IN</label><div id="timer">--:--:--</div></div>
-    <button type="button" id="getEntriesButton" class="cta-button">Get Entries</button>
-    <div class="entry-info"><span>YOUR ENTRIES: <strong id="userEntries">--</strong></span></div>
-    <div class="referral">
-      <label for="referralCode">Referral Code</label>
-      <input type="text" id="referralCode" placeholder="Enter code for bonus entries" />
-      <button type="button" class="referral-button" onclick="applyReferral()">Apply</button>
-      <div id="referralStatus" class="referral-status"></div>
-    </div>
-  </div>
-
-  <div id="paymentModal" class="modal-overlay">
-    <div class="modal-content">
-      <h2 class="modal-title">Select Tier</h2>
-      <button class="tier-button" onclick="createPiPayment('1.00')"><span class="tier-entries">10 Entries</span> for 1.00 π</button>
-      <button class="tier-button" onclick="createPiPayment('5.00')"><span class="tier-entries">60 Entries</span> for 5.00 π <br><span class="tier-bonus">(Includes 10 Bonus Entries)</span></button>
-      <button class="tier-button" onclick="createPiPayment('10.00')"><span class="tier-entries">130 Entries</span> for 10.00 π <br><span class="tier-bonus">(Includes 30 Bonus Entries)</span></button>
-      <div id="modalCloseButton" class="modal-close">Cancel</div>
-    </div>
-  </div>
+  <div class="title"><span>Seven O'Clock Drop</span></div>
 
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const loginButton = document.getElementById('loginButton');
-      const isPiBrowser = navigator.userAgent.includes("PiBrowser");
-
-      if (!isPiBrowser || typeof window.Pi === "undefined") {
-        loginButton.textContent = 'Error: Use Pi Browser';
-        alert('This app must be run from the Pi Browser.');
-        return;
-      }
-
-      try {
-        Pi.init({ version: "2.0", sandbox: true });
-        loginButton.disabled = false;
-        loginButton.textContent = 'Login with Pi';
-        loginButton.addEventListener('click', authenticateWithPi);
-      } catch (err) {
-        console.error('Failed to initialize Pi SDK', err);
-        loginButton.textContent = 'SDK Init Error';
-        alert('Pi SDK failed to initialize.');
-      }
-
-      const getEntriesButton = document.getElementById('getEntriesButton');
-      const paymentModal = document.getElementById('paymentModal');
-      const modalCloseButton = document.getElementById('modalCloseButton');
-      getEntriesButton.addEventListener('click', () => { paymentModal.classList.add('visible'); });
-      modalCloseButton.addEventListener('click', () => { paymentModal.classList.remove('visible'); });
-    });
-
-    async function authenticateWithPi() {
-      try {
-        const scopes = ['username', 'payments'];
-        const onAuthComplete = (auth) => {
-          window.currentUser = auth.user;
-          document.getElementById('loginContainer').style.display = 'none';
-          document.getElementById('appContainer').style.display = 'block';
-          initializeApp();
-        };
-        Pi.authenticate(scopes, onAuthComplete).catch(err => {
-          alert('Authentication was cancelled or failed.');
-        });
-      } catch (err) {
-        alert('An unexpected error occurred during authentication.');
-      }
+    function createCoin() {
+      const coin = document.createElement('div');
+      coin.classList.add('coin');
+      coin.style.left = Math.random() * window.innerWidth + 'px';
+      coin.style.animationDuration = (2 + Math.random() * 3) + 's';
+      document.body.appendChild(coin);
+      setTimeout(() => coin.remove(), 5000);
     }
 
-    async function initializeApp() {
-      if (!window.currentUser) return;
-      try {
-        const response = await fetch(`/api/app-data?uid=${window.currentUser.uid}`);
-        if (!response.ok) throw new Error('Server connection failed');
-        const data = await response.json();
-        updateUI(data);
-      } catch (error) {
-        document.getElementById('potValue').textContent = "Error";
-      }
-    }
-
-    function updateUI(data) {
-      document.getElementById('potValue').textContent = `${data.potValue} π`;
-      document.getElementById('userEntries').textContent = data.userEntries;
-      startCountdown(data.nextDropTimestamp);
-    }
-
-    function startCountdown(targetTimestamp) {
-      if (window.countdownInterval) clearInterval(window.countdownInterval);
-      const timerElement = document.getElementById('timer');
-      window.countdownInterval = setInterval(() => {
-        const diff = targetTimestamp - Date.now();
-        if (diff < 0) {
-          timerElement.textContent = "00:00:00";
-          clearInterval(window.countdownInterval);
-          return;
-        }
-        const hours = Math.floor(diff / 3600000);
-        const minutes = Math.floor((diff % 3600000) / 60000);
-        const seconds = Math.floor((diff % 60000) / 1000);
-        timerElement.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-      }, 1000);
-    }
-
-    async function applyReferral() {
-      const code = document.getElementById("referralCode").value.trim();
-      const status = document.getElementById("referralStatus");
-      if (!window.currentUser || !code) return;
-      try {
-        const response = await fetch(`/api/apply-referral`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: code, uid: window.currentUser.uid })
-        });
-        const result = await response.json();
-        status.textContent = result.message;
-        if (result.success) {
-          status.style.color = "#00FFAA";
-          document.getElementById('userEntries').textContent = result.newEntryCount;
-        } else {
-          status.style.color = "#FF4444";
-        }
-      } catch (error) {
-        status.textContent = 'Error connecting to server.';
-        status.style.color = "#FF4444";
-      }
-    }
-
-    function onPaymentComplete(payment) {
-      if (!payment) return;
-      fetch(`/api/complete-payment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentId: payment.identifier, txid: payment.transaction.txid })
-      }).then(res => res.json()).then(data => {
-        if (data.success) {
-          alert('Payment successful! Your new entries have been added.');
-          initializeApp();
-        } else {
-          alert(`Payment verification failed: ${data.message}`);
-        }
-      }).catch(err => alert('An error occurred while verifying your payment.'));
-    }
-
-    async function createPiPayment(amount) {
-      if (!window.currentUser) return alert("Please log in first.");
-      document.getElementById('paymentModal').classList.remove('visible');
-      try {
-        const response = await fetch(`/api/create-payment`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount: amount, uid: window.currentUser.uid })
-        });
-        const paymentData = await response.json();
-        if (!paymentData.success) throw new Error(paymentData.message);
-        Pi.createPayment(paymentData.piPayment, {
-          onReadyForServerApproval: (paymentId) => onPaymentComplete({ identifier: paymentId, transaction: {} }),
-          onReadyForServerCompletion: (paymentId, txid) => onPaymentComplete({ identifier: paymentId, transaction: { txid } }),
-          onCancel: (paymentId) => alert("Payment cancelled."),
-          onError: (error, payment) => alert("An error occurred with the payment.")
-        });
-      } catch (error) {
-        alert(`Error creating payment: ${error.message}`);
-      }
-    }
+    setInterval(createCoin, 200);
   </script>
 </body>
 </html>
