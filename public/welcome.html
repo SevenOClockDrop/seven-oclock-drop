@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to Seven O'Clock Drop</title>
+  <style>
+    body {
+      background: radial-gradient(circle at center, #0a0a0f, #000);
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      padding: 40px;
+    }
+
+    h1 {
+      font-size: 2.8em;
+      color: #ff00c8;
+      text-shadow: 0 0 10px #ff00c8;
+      margin-bottom: 20px;
+    }
+
+    p {
+      font-size: 1.2em;
+      margin-bottom: 30px;
+      color: #ccc;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #8f00ff, #00f0ff);
+      border: none;
+      color: white;
+      padding: 15px 25px;
+      font-size: 1.1em;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 0 10px #00f0ff;
+      transition: transform 0.2s ease;
+    }
+
+    .btn:hover {
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+<body>
+  <h1>Welcome, Pioneer</h1>
+  <p>Seven O'Clock Drop is a daily ritual where Pi meets mystery. Claim your free entry, invite friends, and watch the pot grow. At 7:00 PM California time, one entry wins it all.</p>
+  <button class="btn" onclick="startJourney()">Claim Free Entry & Begin</button>
+
+  <script>
+    function startJourney() {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get('ref');
+      if (ref) {
+        localStorage.setItem('referrer_uid', ref);
+      }
+      window.location.href = '/index.html';
+    }
+  </script>
+</body>
+</html>
