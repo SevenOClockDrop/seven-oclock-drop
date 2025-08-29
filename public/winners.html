@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Winner History — Seven O'Clock Drop</title>
+  <style>
+    body {
+      margin: 0;
+      background: radial-gradient(circle at center, #0a0a0f, #000);
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      padding: 30px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2.5em;
+      color: #ff00c8;
+      text-shadow: 0 0 10px #ff00c8;
+      margin-bottom: 30px;
+    }
+
+    .winner-list {
+      max-width: 600px;
+      margin: 0 auto;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 20px;
+      box-shadow: 0 0 20px #00f0ff;
+    }
+
+    .winner {
+      margin-bottom: 15px;
+      padding: 10px;
+      border-bottom: 1px solid #444;
+    }
+
+    .winner:last-child {
+      border-bottom: none;
+    }
+
+    .uid {
+      font-weight: bold;
+      color: #8f00ff;
+    }
+
+    .amount {
+      color: gold;
+    }
+
+    .timestamp {
+      font-size: 0.9em;
+      color: #ccc;
+    }
+  </style>
+</head>
+<body>
+  <h1>Past Winners</h1>
+  <div class="winner-list" id="winnerList">Loading winners...</div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+    const supabase = createClient('https://your-project.supabase.co', 'public-anon-key');
+
+    async function loadWinners() {
+      const { data, error } = await supabase
+        .from('winners')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(30);
+
+      const container = document.getElementById('winnerList');
+      if (error || !data) {
+        container.textContent = 'Error loading winners.';
+        return;
+      }
+
+      container.innerHTML = data.map(winner => `
+        <div class="winner">
+          <div class="uid">Winner: ${winner.uid}</div>
+          <div class="amount">Payout: ${winner.amount} Pi</div>
+          <div class="timestamp">Date: ${new Date(winner.timestamp).toLocaleString()}</div>
+        </div>
+      `).join('');
+    }
+
+    loadWinners();
+  </script>
+</body>
+</html>
