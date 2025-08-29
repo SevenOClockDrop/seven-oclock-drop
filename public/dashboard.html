@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Platform Fee Dashboard</title>
+  <style>
+    body {
+      background: #0a0a0f;
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 30px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2.5em;
+      color: #00f0ff;
+      text-shadow: 0 0 10px #00f0ff;
+      margin-bottom: 30px;
+    }
+
+    .summary {
+      font-size: 1.2em;
+      margin-bottom: 20px;
+      color: gold;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(255, 255, 255, 0.05);
+      box-shadow: 0 0 10px #8f00ff;
+    }
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #444;
+      text-align: left;
+    }
+
+    th {
+      background-color: #111;
+      color: #00f0ff;
+    }
+
+    tr:hover {
+      background-color: #222;
+    }
+  </style>
+</head>
+<body>
+  <h1>Platform Fee Dashboard</h1>
+  <div class="summary" id="summary">Loading summary...</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Total Pot</th>
+        <th>Platform Fee (5%)</th>
+        <th>Winner UID</th>
+      </tr>
+    </thead>
+    <tbody id="feeTable">Loading data...</tbody>
+  </table>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+    const supabase = createClient('https://your-project.supabase.co', 'public-anon-key');
+
+    async function loadDashboard() {
+      const { data, error } = await supabase
+        .from('pot_history')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(30);
+
+      const table = document.getElementById('feeTable');
+      const summary = document.getElementById('summary');
+
+      if (error || !data) {
+        table.innerHTML = '<tr><td colspan="4">Error loading data.</td></tr>';
+        return;
+      }
+
+      let totalEarned = 0;
+      table.innerHTML = data.map(row => {
+        const fee = row.total * 0.05;
+        totalEarned += fee;
+        return `
+          <tr>
+            <td>${row.date}</td>
+            <td>${row.total.toFixed(2)} Pi</td>
+            <td>${fee.toFixed(2)} Pi</td>
+            <td>${row.winner_uid || '—'}</td>
+          </tr>
+        `;
+      }).join('');
+
+      summary.textContent = `Total Platform Fees Earned: ${totalEarned.toFixed(2)} Pi`;
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>
