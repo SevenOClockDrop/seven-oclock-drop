@@ -1,15 +1,13 @@
-// referrals.js — Referral Bonus Logic
+// referrals.js — Dual Referral Bonus Logic
 
 import { supabase } from './supabase.js';
 import { logEntry } from './supabase.js';
 
-// 🎁 Reward: 5 bonus entries per referral
-const BONUS_ENTRIES = 5;
+const BONUS_ENTRIES = 10;
 
-// Called when a user signs up via referral link
 export async function handleReferral(referrerUid, newUserUid) {
   try {
-    // 1. Check if referral already logged
+    // 1. Check if referral already rewarded
     const { data: existing, error } = await supabase
       .from('referrals')
       .select('*')
@@ -28,12 +26,13 @@ export async function handleReferral(referrerUid, newUserUid) {
       timestamp: new Date().toISOString()
     }]);
 
-    // 3. Reward referrer with bonus entries
+    // 3. Reward both users
     for (let i = 0; i < BONUS_ENTRIES; i++) {
       await logEntry(referrerUid, 'referral');
+      await logEntry(newUserUid, 'referral');
     }
 
-    console.log(`✅ ${BONUS_ENTRIES} bonus entries awarded to ${referrerUid}`);
+    console.log(`✅ ${BONUS_ENTRIES} entries awarded to both ${referrerUid} and ${newUserUid}`);
   } catch (err) {
     console.error('❌ Referral logic failed:', err);
   }
