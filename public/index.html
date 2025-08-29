@@ -8,51 +8,69 @@
     body {
       margin: 0;
       background: radial-gradient(circle at center, #0a0a0f, #000);
-      overflow: hidden;
       font-family: 'Segoe UI', sans-serif;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding-top: 40px;
     }
 
     .title {
-      position: relative;
-      z-index: 2;
-      text-align: center;
-      margin-top: 20vh;
       font-size: 3.5em;
       font-weight: bold;
-      color: #fff;
-      text-shadow:
-        0 0 5px #8f00ff,
-        0 0 10px #8f00ff,
-        0 0 20px #00f0ff,
-        0 0 40px #00f0ff;
+      text-align: center;
+      text-shadow: 0 0 10px #8f00ff, 0 0 20px #00f0ff;
       font-family: 'Brush Script MT', cursive;
+      margin-bottom: 10px;
     }
 
-    .title span {
-      background: linear-gradient(45deg, #8f00ff, #00f0ff, #ff00c8);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      position: relative;
+    .countdown {
+      font-size: 1.5em;
+      margin-bottom: 20px;
+      color: #ff00c8;
+      text-shadow: 0 0 10px #ff00c8;
     }
 
-    .title span::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Crystal_Clear_app_kdiamond.svg/1024px-Crystal_Clear_app_kdiamond.svg.png');
-      background-size: contain;
-      background-repeat: no-repeat;
-      opacity: 0.2;
-      animation: sparkle 2s infinite linear;
+    .pot {
+      font-size: 2em;
+      margin-bottom: 30px;
+      color: gold;
+      text-shadow: 0 0 10px gold;
     }
 
-    @keyframes sparkle {
-      0% { opacity: 0.2; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.1); }
-      100% { opacity: 0.2; transform: scale(1); }
+    .entry-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-bottom: 40px;
+      width: 80%;
+      max-width: 400px;
+    }
+
+    .entry-buttons button {
+      background: linear-gradient(135deg, #8f00ff, #00f0ff);
+      border: none;
+      color: white;
+      padding: 15px;
+      font-size: 1.1em;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 0 10px #00f0ff;
+      transition: transform 0.2s ease;
+    }
+
+    .entry-buttons button:hover {
+      transform: scale(1.05);
+    }
+
+    .status {
+      font-size: 1em;
+      color: #ff00c8;
+      margin-top: 20px;
+      text-align: center;
     }
 
     .coin {
@@ -72,9 +90,41 @@
   </style>
 </head>
 <body>
-  <div class="title"><span>Seven O'Clock Drop</span></div>
+  <div class="title">Seven O'Clock Drop</div>
+  <div class="countdown" id="countdown">Loading countdown...</div>
+  <div class="pot" id="potDisplay">Today's Pot: 100 Pi (95 Pi after fee)</div>
+
+  <div class="entry-buttons">
+    <button onclick="claimFreeEntry()">Claim Your Free Daily Entry</button>
+    <button onclick="purchaseEntry(1)">Buy 10 Entries for 1 Pi</button>
+    <button onclick="purchaseEntry(5)">Buy 75 Entries for 5 Pi</button>
+    <button onclick="purchaseEntry(10)">Buy 160 Entries for 10 Pi</button>
+  </div>
+
+  <div class="status" id="status"></div>
 
   <script>
+    function updateCountdown() {
+      const now = new Date();
+      const target = new Date();
+      target.setHours(19, 0, 0, 0); // 7:00 PM local time
+
+      if (now > target) {
+        target.setDate(target.getDate() + 1);
+      }
+
+      const diff = target - now;
+      const hours = Math.floor(diff / 1000 / 60 / 60);
+      const minutes = Math.floor((diff / 1000 / 60) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+
+      document.getElementById('countdown').textContent =
+        `${hours}h ${minutes}m ${seconds}s until drop`;
+    }
+
+    setInterval(updateCountdown, 1000);
+    updateCountdown();
+
     function createCoin() {
       const coin = document.createElement('div');
       coin.classList.add('coin');
@@ -85,6 +135,40 @@
     }
 
     setInterval(createCoin, 200);
+
+    function claimFreeEntry() {
+      // Replace with backend call to log free entry
+      document.getElementById('status').textContent = "✅ Free entry claimed!";
+    }
+
+    function purchaseEntry(piAmount) {
+      if (!window.Pi) {
+        document.getElementById('status').textContent = "Pi SDK not found. Open in Pi Browser.";
+        return;
+      }
+
+      const paymentData = {
+        amount: piAmount,
+        memo: `Purchase ${piAmount} Pi worth of entries`,
+        metadata: { tier: piAmount }
+      };
+
+      Pi.createPayment(paymentData, {
+        onReadyForServerApproval: (paymentId) => {
+          console.log("Ready for approval:", paymentId);
+        },
+        onReadyForServerCompletion: (paymentId, txid) => {
+          document.getElementById('status').textContent = `✅ Payment successful! Entries added.`;
+        },
+        onCancel: () => {
+          document.getElementById('status').textContent = "❌ Payment cancelled.";
+        },
+        onError: (error) => {
+          console.error(error);
+          document.getElementById('status').textContent = "❌ Payment failed.";
+        }
+      });
+    }
   </script>
 </body>
 </html>
