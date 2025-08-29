@@ -1,0 +1,13 @@
+// api/daily-reset.js — Vercel Cron Trigger
+
+import { dailyReset } from '../src/reset.js';
+
+export default async function handler(req, res) {
+  try {
+    await dailyReset();
+    res.status(200).send('✅ Daily reset complete');
+  } catch (err) {
+    console.error('❌ Cron failed:', err);
+    res.status(500).send('Reset failed');
+  }
+}
