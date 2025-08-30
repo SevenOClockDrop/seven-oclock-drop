@@ -1,44 +1,38 @@
+// server.js — SevenO'Clock Drop Backend
+
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const cors = require('cors');
 const app = express();
 
 // --- MIDDLEWARE ---
-// This allows your frontend to talk to your backend
 app.use(cors());
-// This allows the server to understand JSON data sent from the frontend
 app.use(express.json());
 
 // --- DATABASE CONNECTION ---
-// These lines securely read the secret keys you stored in Vercel
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// --- APP CONFIGURATION ---
+// --- ENTRY TIERS (Proposal-Compliant) ---
 const TIERS = {
   '1.00': 10,
-  '5.00': 60,  // 50 base + 10 bonus
-  '10.00': 130 // 100 base + 30 bonus
+  '5.00': 60,   // 50 base + 10 bonus
+  '10.00': 150  // 100 base + 50 bonus — corrected per proposal
 };
 
 // --- TEMPORARY IN-MEMORY DATA ---
-// In the future, this will come from the database
 let currentPotValue = 1540;
 const usedReferralCodes = new Set();
 const VALID_REFERRAL_CODES = ["DROP1234", "DROP5678", "DROP2025", "PIONEER"];
 
-// --- HELPER FUNCTION ---
-// A reusable function to get a user's data from the database.
-// If the user doesn't exist, it creates a new record for them.
+// --- USER HELPER ---
 async function getOrCreateUser(uid) {
   let { data: user, error } = await supabase.from('users').select('*').eq('uid', uid).single();
-  
-  // 'PGRST116' is the Supabase error code for "no rows found"
   if (error && error.code === 'PGRST116') {
     const { data: newUser, error: insertError } = await supabase
       .from('users')
-      .insert({ uid: uid, entries: 0 }) // New users start with 0 entries
+      .insert({ uid: uid, entries: 0 })
       .select()
       .single();
     if (insertError) throw insertError;
@@ -49,18 +43,14 @@ async function getOrCreateUser(uid) {
   return user;
 }
 
-// --- API ENDPOINTS ---
-
-// Endpoint to get the main app data when a user logs in
+// --- APP DATA ENDPOINT ---
 app.get('/api/app-data', async (req, res) => {
   const { uid } = req.query;
   if (!uid) return res.status(400).json({ message: "User ID (uid) is required." });
 
   try {
     const user = await getOrCreateUser(uid);
-    
-    // Calculate the timestamp for the next 7 PM PST drop
-    const dropHourUTC = 2; // 7 PM PST is 2:00 AM UTC the next day
+    const dropHourUTC = 2; // 7 PM PDT = 2 AM UTC next day
     const now = new Date();
     let nextDrop = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), dropHourUTC, 0, 0, 0));
     if (now.getTime() >= nextDrop.getTime()) {
@@ -78,7 +68,7 @@ app.get('/api/app-data', async (req, res) => {
   }
 });
 
-// Endpoint to handle referral code submissions
+// --- REFERRAL ENDPOINT ---
 app.post('/api/apply-referral', async (req, res) => {
   const { code, uid } = req.body;
   if (!uid || !code) return res.status(400).json({ success: false, message: 'User ID and code are required.' });
@@ -87,7 +77,7 @@ app.post('/api/apply-referral', async (req, res) => {
   if (VALID_REFERRAL_CODES.includes(code)) {
     try {
       const user = await getOrCreateUser(uid);
-      const newEntryCount = user.entries + 5;
+      const newEntryCount = user.entries + 5; // ✅ Proposal-compliant: 5 bonus entries
       await supabase.from('users').update({ entries: newEntryCount }).eq('uid', uid);
       usedReferralCodes.add(code);
       return res.json({ success: true, message: '✅ Referral applied!', newEntryCount: newEntryCount });
@@ -100,9 +90,7 @@ app.post('/api/apply-referral', async (req, res) => {
   }
 });
 
-// --- PAYMENT ENDPOINTS ---
-
-// Step 1: Frontend asks backend to prepare a payment object for the Pi SDK
+// --- PAYMENT PREPARATION ---
 app.post('/api/create-payment', async (req, res) => {
   const { amount, uid } = req.body;
   if (!uid || !amount || !TIERS[amount]) {
@@ -110,11 +98,10 @@ app.post('/api/create-payment', async (req, res) => {
   }
 
   try {
-    // This is the payment object the Pi SDK needs
     const piPayment = {
       amount: parseFloat(amount),
       memo: `Entries for SevenO'Clock Drop (${TIERS[amount]} entries)`,
-      metadata: { uid: uid, tier: amount } // We pass the user's ID and tier choice in the metadata
+      metadata: { uid: uid, tier: amount }
     };
     res.json({ success: true, piPayment: piPayment });
   } catch (error) {
@@ -123,25 +110,12 @@ app.post('/api/create-payment', async (req, res) => {
   }
 });
 
-// Step 2: Pi SDK tells our frontend the payment is done, and frontend tells our backend.
+// --- PAYMENT COMPLETION (Sandbox Mode) ---
 app.post('/api/complete-payment', async (req, res) => {
   const { paymentId, txid } = req.body;
-  
-  // IMPORTANT SANDBOX NOTE:
-  // In the real world (Mainnet), we would take the paymentId and make a server-to-server
-  // call to Pi's servers to get the payment details, including the metadata.
-  // The current sandbox does not support this server-to-server verification easily.
-  // The code below is a placeholder for how it *should* work.
-  // For now, we cannot securely know which user paid from the backend.
-  
   console.log(`Received payment completion for PaymentID: ${paymentId} and TXID: ${txid}`);
-  
-  // This is a SIMPLIFICATION for the sandbox.
-  // We will trust the frontend for now, but this is not secure for Mainnet.
-  // In a future update, we will replace this with a proper verification flow.
   res.json({ success: true, message: "Payment received (Sandbox Mode). We will update your entries shortly." });
 });
 
-
-// This makes the server available for Vercel to run.
+// --- EXPORT FOR VERCEL ---
 module.exports = app;
