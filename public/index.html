@@ -94,13 +94,56 @@
         opacity: 0;
       }
     }
+
+    #pot-container {
+      margin-top: 40px;
+      text-align: center;
+    }
+
+    #pot-label {
+      font-size: 1.1em;
+      color: #00f0ff;
+      margin-bottom: 10px;
+    }
+
+    #pot-value {
+      font-size: 2em;
+      color: #ffd700;
+      text-shadow: 0 0 10px #ffd700;
+      margin-bottom: 20px;
+    }
+
+    #pot-meter {
+      width: 80%;
+      height: 20px;
+      background: #222;
+      border-radius: 10px;
+      margin: 0 auto;
+      overflow: hidden;
+      box-shadow: 0 0 10px #00f0ff;
+    }
+
+    #pot-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #ff00c8, #00f0ff);
+      transition: width 1s ease-in-out;
+    }
   </style>
 </head>
 <body>
-  <h1>Seven O'Clock Drop</h1>
-  <p>Seven O'Clock Drop is a daily ritual where Pi meets mystery. Claim your free entry, invite friends, and watch the pot grow. At 7:00 PM California time, one entry wins <strong>95%</strong> of the pot. The remaining <strong>5%</strong> supports platform development.</p>
-  <p><strong>Note:</strong> Only verified Pioneers can participate. Non-Pioneers will be prompted to join Pi Network before entering.</p>
-  <button class="btn" onclick="startJourney()">Claim Free Entry & Begin</button>
+  <h1>Seven O’Clock Drop</h1>
+  <p>Every night. One moment. One winner.</p>
+  <p>The countdown begins. Are you in?</p>
+  <button class="btn" onclick="startJourney()">Claim Entry</button>
+
+  <div id="pot-container">
+    <div id="pot-label">Pot is growing...</div>
+    <div id="pot-value">0 Pi</div>
+    <div id="pot-meter">
+      <div id="pot-fill"></div>
+    </div>
+  </div>
 
   <div class="footer">
     <a href="/privacy.html">Privacy Policy</a>
@@ -109,6 +152,7 @@
 
   <audio id="coinSound" src="/sounds/coin-drop.mp3" preload="auto"></audio>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <script>
     function startJourney() {
       const params = new URLSearchParams(window.location.search);
@@ -134,7 +178,47 @@
       setTimeout(() => coin.remove(), 3000);
     }
 
-    setInterval(dropCoin, 800); // Drop a coin every 0.8 seconds
+    setInterval(dropCoin, 800);
+
+    // Supabase pot tracker
+    const supabaseUrl = 'https://your-project-ref.supabase.co';
+    const supabaseKey = 'your-anon-key';
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+    let currentPot = 0;
+
+    async function fetchPotValue() {
+      const { data, error } = await supabase
+        .from('pot')
+        .select('current_value')
+        .single();
+
+      if (error || !data) return;
+
+      const newPot = data.current_value;
+      animatePot(currentPot, newPot);
+      currentPot = newPot;
+    }
+
+    function animatePot(from, to) {
+      const potValueEl = document.getElementById('pot-value');
+      const potFillEl = document.getElementById('pot-fill');
+      const steps = 30;
+      let step = 0;
+
+      const increment = (to - from) / steps;
+      const interval = setInterval(() => {
+        from += increment;
+        step++;
+        potValueEl.textContent = `${from.toFixed(2)} Pi`;
+        potFillEl.style.width = `${Math.min((from / 1000) * 100, 100)}%`;
+
+        if (step >= steps) clearInterval(interval);
+      }, 50);
+    }
+
+    setInterval(fetchPotValue, 5000);
+    fetchPotValue();
   </script>
 </body>
 </html>
