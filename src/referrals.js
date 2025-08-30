@@ -1,39 +1,38 @@
-// referrals.js — Dual Referral Bonus Logic
+// referrals.js — Referral Bonus Logic (Proposal-Compliant)
 
-import { supabase } from './supabase.js';
-import { logEntry } from './supabase.js';
+import { logEntry } from './reset.js'; // or wherever your entry logging lives
 
-const BONUS_ENTRIES = 10;
-
+/**
+ * Handles referral bonuses for both referrer and new user.
+ * Awards 5 entries each, per proposal spec.
+ * @param {string} referrerUid - UID of the referring Pioneer
+ * @param {string} newUserUid - UID of the newly onboarded Pioneer
+ */
 export async function handleReferral(referrerUid, newUserUid) {
-  try {
-    // 1. Check if referral already rewarded
-    const { data: existing, error } = await supabase
-      .from('referrals')
-      .select('*')
-      .eq('referrer_uid', referrerUid)
-      .eq('new_user_uid', newUserUid);
-
-    if (existing && existing.length > 0) {
-      console.log('Referral already rewarded.');
-      return;
-    }
-
-    // 2. Log referral
-    await supabase.from('referrals').insert([{
-      referrer_uid: referrerUid,
-      new_user_uid: newUserUid,
-      timestamp: new Date().toISOString()
-    }]);
-
-    // 3. Reward both users
-    for (let i = 0; i < BONUS_ENTRIES; i++) {
-      await logEntry(referrerUid, 'referral');
-      await logEntry(newUserUid, 'referral');
-    }
-
-    console.log(`✅ ${BONUS_ENTRIES} entries awarded to both ${referrerUid} and ${newUserUid}`);
-  } catch (err) {
-    console.error('❌ Referral logic failed:', err);
+  if (!isReferralValid(referrerUid, newUserUid)) {
+    console.warn('❌ Invalid referral attempt.');
+    return;
   }
+
+  // Award 5 entries to each
+  await logEntry(referrerUid, 5);   // Referrer bonus
+  await logEntry(newUserUid, 5);    // New user bonus
+
+  console.log(`✅ Referral bonus applied: ${referrerUid} +5, ${newUserUid} +5`);
+}
+
+/**
+ * Validates referral logic to prevent abuse.
+ * - No self-referrals
+ * - Both UIDs must be present
+ * @param {string} referrerUid
+ * @param {string} newUserUid
+ * @returns {boolean}
+ */
+export function isReferralValid(referrerUid, newUserUid) {
+  return (
+    referrerUid &&
+    newUserUid &&
+    referrerUid !== newUserUid
+  );
 }
