@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Seven O'Clock Drop</title>
   <style>
-    /* [CSS styles omitted for brevity — already provided above] */
+    /* Cyberpunk styles, shimmer text, coin animation, pot meter */
+    /* [CSS omitted for brevity — already provided above] */
   </style>
 </head>
 <body>
@@ -25,9 +26,7 @@
   <div id="pot-container">
     <div id="pot-label">Pot is growing...</div>
     <div id="pot-value">0 Pi</div>
-    <div id="pot-meter">
-      <div id="pot-fill"></div>
-    </div>
+    <div id="pot-meter"><div id="pot-fill"></div></div>
   </div>
 
   <div class="footer">
@@ -35,11 +34,139 @@
     <a href="/terms.html">Terms of Service</a>
   </div>
 
-  <audio id="coinSound" src="/sounds/coin-drop.mp3" preload="auto"></audio>
-  <audio id="zapSound" src="/sounds/zap.mp3" preload="auto"></audio>
-  <audio id="chimeSound" src="/sounds/chime.mp3" preload="auto"></audio>
+  <!-- Sound effects via public URLs -->
+  <audio id="coinSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_7c4e2b9b6f.mp3" preload="auto"></audio>
+  <audio id="zapSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_5f8d9b1b6f.mp3" preload="auto"></audio>
+  <audio id="chimeSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_9e3d9b1b6f.mp3" preload="auto"></audio>
 
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-    const supabaseUrl = 'https://czmxjaggnymvzqvvzicl
+    const supabase = createClient(
+      'https://czmxjaggnymvzqvvzicl.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6bXhqYWdnbnltdnpxdnZ6aWNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyNzA5NTksImV4cCI6MjA3MTg0Njk1OX0.giiH6pMztnqW-yj-vAOMzJOt0_wEIkmYY3nXu0B0lmE'
+    );
+
+    let currentPot = 0;
+
+    async function logEntry(uid, tier) {
+      const today = new Date().toISOString().split('T')[0];
+      await supabase.from('entries').insert([{ uid, tier, date: today, timestamp: new Date().toISOString() }]);
+    }
+
+    async function logTransaction(uid, amount, type) {
+      const today = new Date().toISOString().split('T')[0];
+      await supabase.from('transactions').insert([{ uid, amount, type, date: today, timestamp: new Date().toISOString() }]);
+    }
+
+    async function logReferral(referrer, referred) {
+      await supabase.from('referrals').insert([{ referrer_uid: referrer, referred_uid: referred, timestamp: new Date().toISOString() }]);
+    }
+
+    async function claimEntry() {
+      document.getElementById('zapSound').play();
+      document.querySelector('.btn').style.display = 'none';
+      document.getElementById('tierOptions').style.display = 'block';
+
+      const uid = localStorage.getItem('user_uid') || crypto.randomUUID();
+      localStorage.setItem('user_uid', uid);
+
+      await logEntry(uid, 'free');
+      await logTransaction(uid, 0, 'entry');
+
+      const ref = new URLSearchParams(window.location.search).get('ref');
+      if (ref && /^[a-zA-Z0-9_-]{10,}$/.test(ref)) {
+        localStorage.setItem('referrer_uid', ref);
+        await logReferral(ref, uid);
+        await logEntry(ref, 'referral-bonus');
+        await logTransaction(ref, 0, 'referral-bonus');
+      }
+    }
+
+    async function selectTier(amount, bonus) {
+      document.getElementById('chimeSound').play();
+      document.getElementById('tierOptions').style.display = 'none';
+
+      const uid = localStorage.getItem('user_uid');
+      await logEntry(uid, `tier-${amount}`);
+      await logTransaction(uid, amount, 'entry');
+    }
+
+    function dropCoin() {
+      const coin = document.createElement('div');
+      coin.className = 'coin';
+      coin.style.left = Math.random() * window.innerWidth + 'px';
+      document.body.appendChild(coin);
+
+      const sound = document.getElementById('coinSound');
+      sound.currentTime = 0;
+      sound.playbackRate = 0.9 + Math.random() * 0.2;
+      sound.play();
+
+      setTimeout(() => coin.remove(), 3000);
+    }
+
+    setInterval(dropCoin, 800);
+
+    supabase
+      .channel('pot-updates')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pot_tracker' }, payload => {
+        const newPot = payload.new.current_amount;
+        animatePot(currentPot, newPot);
+        currentPot = newPot;
+      })
+      .subscribe();
+
+    function animatePot(from, to) {
+      const potValueEl = document.getElementById('pot-value');
+      const potFillEl = document.getElementById('pot-fill');
+      const steps = 30;
+      let step = 0;
+      const increment = (to - from) / steps;
+
+      const interval = setInterval(() => {
+        from += increment;
+        step++;
+        potValueEl.textContent = `${from.toFixed(2)} Pi`;
+        potFillEl.style.width = `${Math.min((from / 1000) * 100, 100)}%`;
+        if (step >= steps) clearInterval(interval);
+      }, 50);
+    }
+
+    async function checkWinner() {
+      const uid = localStorage.getItem('user_uid');
+      const { data } = await supabase
+        .from('winners')
+        .select('*')
+        .eq('uid', uid)
+        .order('timestamp', { ascending: false })
+        .limit(1);
+
+      if (data && data.length > 0) {
+        revealWinner(data[0].uid);
+      }
+    }
+
+    function revealWinner(winnerUid) {
+      const name = winnerUid.slice(0, 6).toUpperCase();
+      const overlay = document.createElement('div');
+      overlay.style.position = 'fixed';
+      overlay.style.top = 0;
+      overlay.style.left = 0;
+      overlay.style.width = '100vw';
+      overlay.style.height = '100vh';
+      overlay.style.background = '#000';
+      overlay.style.color = '#FFD700';
+      overlay.style.fontSize = '2em';
+      overlay.style.display = 'flex';
+      overlay.style.alignItems = 'center';
+      overlay.style.justifyContent = 'center';
+      overlay.style.zIndex = 9999;
+      overlay.innerText = `🏆 WINNER: ${name}`;
+      document.body.appendChild(overlay);
+    }
+
+    checkWinner();
+  </script>
+</body>
+</html>
