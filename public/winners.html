@@ -34,6 +34,7 @@
       margin-bottom: 15px;
       padding: 10px;
       border-bottom: 1px solid #444;
+      animation: fadeIn 0.6s ease-out;
     }
 
     .winner:last-child {
@@ -53,6 +54,11 @@
       font-size: 0.9em;
       color: #ccc;
     }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 <body>
@@ -62,8 +68,10 @@
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-    const supabase = createClient('https://your-project.supabase.co', 'public-anon-key');
+    const supabase = createClient('https://your-project.supabase.co', 'your-public-anon-key');
+    const container = document.getElementById('winnerList');
 
+    // Initial load
     async function loadWinners() {
       const { data, error } = await supabase
         .from('winners')
@@ -71,12 +79,15 @@
         .order('timestamp', { ascending: false })
         .limit(30);
 
-      const container = document.getElementById('winnerList');
       if (error || !data) {
         container.textContent = 'Error loading winners.';
         return;
       }
 
+      renderWinners(data);
+    }
+
+    function renderWinners(data) {
       container.innerHTML = data.map(winner => `
         <div class="winner">
           <div class="uid">Winner: ${winner.uid}</div>
@@ -85,6 +96,22 @@
         </div>
       `).join('');
     }
+
+    // Realtime listener
+    supabase
+      .channel('winner-updates')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'winners' }, payload => {
+        const newWinner = payload.new;
+        const winnerHTML = `
+          <div class="winner">
+            <div class="uid">Winner: ${newWinner.uid}</div>
+            <div class="amount">Payout: ${newWinner.amount} Pi</div>
+            <div class="timestamp">Date: ${new Date(newWinner.timestamp).toLocaleString()}</div>
+          </div>
+        `;
+        container.insertAdjacentHTML('afterbegin', winnerHTML);
+      })
+      .subscribe();
 
     loadWinners();
   </script>
