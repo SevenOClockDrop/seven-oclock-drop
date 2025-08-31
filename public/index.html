@@ -30,13 +30,6 @@
       100% { background-position: 200% center; }
     }
 
-    p {
-      font-size: 1.2em;
-      margin: 20px auto;
-      max-width: 600px;
-      color: #ccc;
-    }
-
     .btn {
       background: linear-gradient(135deg, #8f00ff, #00f0ff);
       border: none;
@@ -54,22 +47,20 @@
       transform: scale(1.05);
     }
 
-    .footer {
-      position: absolute;
-      bottom: 20px;
-      width: 100%;
-      font-size: 0.9em;
-      color: #888;
+    .tier-options {
+      margin-top: 30px;
     }
 
-    .footer a {
-      color: #00f0ff;
-      text-decoration: none;
-      margin: 0 10px;
-    }
-
-    .footer a:hover {
-      text-decoration: underline;
+    .tier-btn {
+      background: #C800FF;
+      border: none;
+      margin: 10px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: bold;
+      box-shadow: 0 0 8px #C800FF;
+      cursor: pointer;
     }
 
     .coin {
@@ -83,16 +74,8 @@
     }
 
     @keyframes fall {
-      0% {
-        top: -50px;
-        transform: rotate(0deg);
-        opacity: 0.8;
-      }
-      100% {
-        top: 100vh;
-        transform: rotate(360deg);
-        opacity: 0;
-      }
+      0% { top: -50px; transform: rotate(0deg); opacity: 0.8; }
+      100% { top: 100vh; transform: rotate(360deg); opacity: 0; }
     }
 
     #pot-container {
@@ -129,13 +112,39 @@
       background: linear-gradient(90deg, #ff00c8, #00f0ff);
       transition: width 1s ease-in-out;
     }
+
+    .footer {
+      position: absolute;
+      bottom: 20px;
+      width: 100%;
+      font-size: 0.9em;
+      color: #888;
+    }
+
+    .footer a {
+      color: #00f0ff;
+      text-decoration: none;
+      margin: 0 10px;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
   <h1>Seven O’Clock Drop</h1>
   <p>Every night. One moment. One winner.</p>
   <p>The countdown begins. Are you in?</p>
-  <button class="btn" onclick="startJourney()">Claim Entry</button>
+
+  <button class="btn" onclick="claimEntry()">Claim Free Entry</button>
+
+  <div class="tier-options" id="tierOptions" style="display:none;">
+    <h2 style="color:#00CFFF;">Boost Your Entries</h2>
+    <button class="tier-btn" onclick="selectTier(1, 0)">1 Pi → 1 Entry</button>
+    <button class="tier-btn" onclick="selectTier(5, 1)">5 Pi → 6 Entries</button>
+    <button class="tier-btn" onclick="selectTier(10, 3)">10 Pi → 13 Entries</button>
+  </div>
 
   <div id="pot-container">
     <div id="pot-label">Pot is growing...</div>
@@ -151,20 +160,38 @@
   </div>
 
   <audio id="coinSound" src="/sounds/coin-drop.mp3" preload="auto"></audio>
+  <audio id="zapSound" src="/sounds/zap.mp3" preload="auto"></audio>
+  <audio id="chimeSound" src="/sounds/chime.mp3" preload="auto"></audio>
 
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-    function startJourney() {
-      const params = new URLSearchParams(window.location.search);
-      const ref = params.get('ref');
+    const supabaseUrl = 'https://your-project-url.supabase.co';
+    const supabaseKey = 'your-public-anon-key';
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    let currentPot = 0;
+
+    function claimEntry() {
+      document.getElementById('zapSound').play();
+      document.querySelector('.btn').style.display = 'none';
+      document.getElementById('tierOptions').style.display = 'block';
+
+      const ref = new URLSearchParams(window.location.search).get('ref');
       if (ref && /^[a-zA-Z0-9_-]{10,}$/.test(ref)) {
         localStorage.setItem('referrer_uid', ref);
       }
-      window.location.href = '/index.html';
+
+      // TODO: supabase logging: logEntry(uid, 'free'), logTransaction(uid, 0, 'entry')
     }
 
-    // Coin animation logic
+    function selectTier(amount, bonus) {
+      document.getElementById('chimeSound').play();
+      document.getElementById('tierOptions').style.display = 'none';
+
+      // TODO: supabase logging: logEntry(uid, 'tierX'), logTransaction(uid, amount, 'entry')
+    }
+
     function dropCoin() {
       const coin = document.createElement('div');
       coin.className = 'coin';
@@ -181,13 +208,6 @@
 
     setInterval(dropCoin, 800);
 
-    // Supabase realtime listener
-    const supabaseUrl = 'https://your-project-url.supabase.co';
-    const supabaseKey = 'your-public-anon-key';
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    let currentPot = 0;
-
     supabase
       .channel('pot-updates')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pot_tracker' }, payload => {
@@ -202,14 +222,13 @@
       const potFillEl = document.getElementById('pot-fill');
       const steps = 30;
       let step = 0;
-
       const increment = (to - from) / steps;
+
       const interval = setInterval(() => {
         from += increment;
         step++;
         potValueEl.textContent = `${from.toFixed(2)} Pi`;
         potFillEl.style.width = `${Math.min((from / 1000) * 100, 100)}%`;
-
         if (step >= steps) clearInterval(interval);
       }, 50);
     }
