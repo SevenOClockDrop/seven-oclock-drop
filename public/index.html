@@ -4,9 +4,106 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Seven O'Clock Drop</title>
+  <script src="https://sdk.minepi.com/pi-sdk.js"></script>
   <style>
-    /* Cyberpunk styles, shimmer text, coin animation, pot meter */
-    /* [CSS omitted for brevity — already provided above] */
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #0a0a0f, #000);
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      text-align: center;
+    }
+    h1 {
+      font-size: 2.8em;
+      margin-top: 60px;
+      background: linear-gradient(90deg, #ff00c8, #00f0ff, #ff00c8);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s linear infinite;
+    }
+    @keyframes shimmer {
+      0% { background-position: 0% center; }
+      100% { background-position: 200% center; }
+    }
+    .btn, .tier-btn {
+      background: linear-gradient(135deg, #8f00ff, #00f0ff);
+      border: none;
+      color: white;
+      padding: 15px 25px;
+      font-size: 1.1em;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 0 10px #00f0ff;
+      transition: transform 0.2s ease;
+      margin-top: 20px;
+    }
+    .btn:hover, .tier-btn:hover {
+      transform: scale(1.05);
+    }
+    .tier-options {
+      margin-top: 30px;
+    }
+    .coin {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background: radial-gradient(circle, #ffd700, #ffcc00);
+      border-radius: 50%;
+      box-shadow: 0 0 10px #ffd700;
+      animation: fall 3s linear infinite;
+    }
+    @keyframes fall {
+      0% { top: -50px; transform: rotate(0deg); opacity: 0.8; }
+      100% { top: 100vh; transform: rotate(360deg); opacity: 0; }
+    }
+    #pot-container {
+      margin-top: 40px;
+      text-align: center;
+    }
+    #pot-label {
+      font-size: 1.1em;
+      color: #00f0ff;
+      margin-bottom: 10px;
+    }
+    #pot-value {
+      font-size: 2em;
+      color: #ffd700;
+      text-shadow: 0 0 10px #ffd700;
+      margin-bottom: 20px;
+    }
+    #pot-meter {
+      width: 80%;
+      height: 20px;
+      background: #222;
+      border-radius: 10px;
+      margin: 0 auto;
+      overflow: hidden;
+      box-shadow: 0 0 10px #00f0ff;
+    }
+    #pot-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #ff00c8, #00f0ff);
+      transition: width 1s ease-in-out;
+    }
+    .footer {
+      position: absolute;
+      bottom: 20px;
+      width: 100%;
+      font-size: 0.9em;
+      color: #888;
+    }
+    .footer a {
+      color: #00f0ff;
+      text-decoration: none;
+      margin: 0 10px;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -18,9 +115,9 @@
 
   <div class="tier-options" id="tierOptions" style="display:none;">
     <h2 style="color:#00CFFF;">Boost Your Entries</h2>
-    <button class="tier-btn" onclick="selectTier(1, 0)">1 Pi → 1 Entry</button>
-    <button class="tier-btn" onclick="selectTier(5, 1)">5 Pi → 6 Entries</button>
-    <button class="tier-btn" onclick="selectTier(10, 3)">10 Pi → 13 Entries</button>
+    <button class="tier-btn" onclick="processPiPayment(1, '1 Pi Entry')">1 Pi → 1 Entry</button>
+    <button class="tier-btn" onclick="processPiPayment(5, '5 Pi Entry')">5 Pi → 6 Entries</button>
+    <button class="tier-btn" onclick="processPiPayment(10, '10 Pi Entry')">10 Pi → 13 Entries</button>
   </div>
 
   <div id="pot-container">
@@ -34,7 +131,6 @@
     <a href="/terms.html">Terms of Service</a>
   </div>
 
-  <!-- Sound effects via public URLs -->
   <audio id="coinSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_7c4e2b9b6f.mp3" preload="auto"></audio>
   <audio id="zapSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_5f8d9b1b6f.mp3" preload="auto"></audio>
   <audio id="chimeSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_9e3d9b1b6f.mp3" preload="auto"></audio>
@@ -44,129 +140,14 @@
 
     const supabase = createClient(
       'https://czmxjaggnymvzqvvzicl.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6bXhqYWdnbnltdnpxdnZ6aWNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyNzA5NTksImV4cCI6MjA3MTg0Njk1OX0.giiH6pMztnqW-yj-vAOMzJOt0_wEIkmYY3nXu0B0lmE'
+      'YOUR_ANON_KEY'
     );
 
-    let currentPot = 0;
-
-    async function logEntry(uid, tier) {
-      const today = new Date().toISOString().split('T')[0];
-      await supabase.from('entries').insert([{ uid, tier, date: today, timestamp: new Date().toISOString() }]);
+    if (window.Pi) {
+      window.Pi.init({ version: "2.0" }, response => {
+        console.log("✅ Pi SDK initialized:", response);
+      });
     }
 
-    async function logTransaction(uid, amount, type) {
-      const today = new Date().toISOString().split('T')[0];
-      await supabase.from('transactions').insert([{ uid, amount, type, date: today, timestamp: new Date().toISOString() }]);
-    }
-
-    async function logReferral(referrer, referred) {
-      await supabase.from('referrals').insert([{ referrer_uid: referrer, referred_uid: referred, timestamp: new Date().toISOString() }]);
-    }
-
-    async function claimEntry() {
-      document.getElementById('zapSound').play();
-      document.querySelector('.btn').style.display = 'none';
-      document.getElementById('tierOptions').style.display = 'block';
-
-      const uid = localStorage.getItem('user_uid') || crypto.randomUUID();
-      localStorage.setItem('user_uid', uid);
-
-      await logEntry(uid, 'free');
-      await logTransaction(uid, 0, 'entry');
-
-      const ref = new URLSearchParams(window.location.search).get('ref');
-      if (ref && /^[a-zA-Z0-9_-]{10,}$/.test(ref)) {
-        localStorage.setItem('referrer_uid', ref);
-        await logReferral(ref, uid);
-        await logEntry(ref, 'referral-bonus');
-        await logTransaction(ref, 0, 'referral-bonus');
-      }
-    }
-
-    async function selectTier(amount, bonus) {
-      document.getElementById('chimeSound').play();
-      document.getElementById('tierOptions').style.display = 'none';
-
-      const uid = localStorage.getItem('user_uid');
-      await logEntry(uid, `tier-${amount}`);
-      await logTransaction(uid, amount, 'entry');
-    }
-
-    function dropCoin() {
-      const coin = document.createElement('div');
-      coin.className = 'coin';
-      coin.style.left = Math.random() * window.innerWidth + 'px';
-      document.body.appendChild(coin);
-
-      const sound = document.getElementById('coinSound');
-      sound.currentTime = 0;
-      sound.playbackRate = 0.9 + Math.random() * 0.2;
-      sound.play();
-
-      setTimeout(() => coin.remove(), 3000);
-    }
-
-    setInterval(dropCoin, 800);
-
-    supabase
-      .channel('pot-updates')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pot_tracker' }, payload => {
-        const newPot = payload.new.current_amount;
-        animatePot(currentPot, newPot);
-        currentPot = newPot;
-      })
-      .subscribe();
-
-    function animatePot(from, to) {
-      const potValueEl = document.getElementById('pot-value');
-      const potFillEl = document.getElementById('pot-fill');
-      const steps = 30;
-      let step = 0;
-      const increment = (to - from) / steps;
-
-      const interval = setInterval(() => {
-        from += increment;
-        step++;
-        potValueEl.textContent = `${from.toFixed(2)} Pi`;
-        potFillEl.style.width = `${Math.min((from / 1000) * 100, 100)}%`;
-        if (step >= steps) clearInterval(interval);
-      }, 50);
-    }
-
-    async function checkWinner() {
-      const uid = localStorage.getItem('user_uid');
-      const { data } = await supabase
-        .from('winners')
-        .select('*')
-        .eq('uid', uid)
-        .order('timestamp', { ascending: false })
-        .limit(1);
-
-      if (data && data.length > 0) {
-        revealWinner(data[0].uid);
-      }
-    }
-
-    function revealWinner(winnerUid) {
-      const name = winnerUid.slice(0, 6).toUpperCase();
-      const overlay = document.createElement('div');
-      overlay.style.position = 'fixed';
-      overlay.style.top = 0;
-      overlay.style.left = 0;
-      overlay.style.width = '100vw';
-      overlay.style.height = '100vh';
-      overlay.style.background = '#000';
-      overlay.style.color = '#FFD700';
-      overlay.style.fontSize = '2em';
-      overlay.style.display = 'flex';
-      overlay.style.alignItems = 'center';
-      overlay.style.justifyContent = 'center';
-      overlay.style.zIndex = 9999;
-      overlay.innerText = `🏆 WINNER: ${name}`;
-      document.body.appendChild(overlay);
-    }
-
-    checkWinner();
-  </script>
-</body>
-</html>
+    function processPiPayment(amount, memo, metadata = {}) {
+      if (!window.Pi) {
