@@ -146,8 +146,55 @@
     if (window.Pi) {
       window.Pi.init({ version: "2.0" }, response => {
         console.log("✅ Pi SDK initialized:", response);
+        const scopes = ['payments'];
+        Pi.authenticate(scopes, payment => {
+          console.log("✅ Authenticated:", payment);
+          localStorage.setItem('user_uid', payment.user.uid);
+        });
       });
     }
 
+    async function logEntry(uid, tier) {
+      const today = new Date().toISOString().split('T')[0];
+      await supabase.from('entries').insert([{ uid, tier, date: today, timestamp: new Date().toISOString() }]);
+    }
+
+    async function logTransaction(uid, amount, type) {
+      const today = new Date().toISOString().split('T')[0];
+      await supabase.from('transactions').insert([{ uid, amount, type, date: today, timestamp: new Date().toISOString() }]);
+    }
+
+    async function logReferral(referrer, referred) {
+      await supabase.from('referrals').insert([{ referrer_uid: referrer, referred_uid: referred, timestamp: new Date().toISOString() }]);
+    }
+
+    async function claimEntry() {
+      document.getElementById('zapSound').play();
+      document.querySelector('.btn').style.display = 'none';
+      document.getElementById('tierOptions').style.display = 'block';
+
+      const uid = localStorage.getItem('user_uid') || crypto.randomUUID();
+      localStorage.setItem('user_uid', uid);
+
+      await logEntry(uid, 'free');
+      await logTransaction(uid, 0, 'entry');
+
+      const ref = new URLSearchParams(window.location.search).get('ref');
+      if (ref && /^[a-zA-Z0-9_-]{10,}$/.test(ref)) {
+        localStorage.setItem('referrer_uid', ref);
+        await logReferral(ref, uid);
+        await logEntry(ref, 'referral-bonus');
+        await logTransaction(ref, 0, 'referral-bonus');
+      }
+    }
+
     function processPiPayment(amount, memo, metadata = {}) {
-      if (!window.Pi) {
+      const uid = localStorage.getItem('user_uid') || crypto.randomUUID();
+      localStorage.setItem('user_uid', uid);
+
+      window.Pi.openPayment(
+        {
+          amount,
+          memo,
+          metadata,
+         [43dcd9a7-70db-4a1f-b0ae-981daa162054](https://github.com/Ronnie434/30-days-of-React/tree/22142106cb46f717a1259f84227cc90ed7fe50cc/02_Day_Introduction_to_React%2F02_introduction_to_react.md?citationMarker=43dcd9a7-70db-4a1f-b0ae-981daa162054 "1")
