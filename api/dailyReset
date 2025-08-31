@@ -1,13 +1,63 @@
-// api/daily-reset.js — Vercel Cron Trigger
+import { createClient } from '@supabase/supabase-js'
 
-import { dailyReset } from '../src/reset.js';
+const supabase = createClient(
+  'https://czmxjaggnymvzqvvzicl.supabase.co',
+  'YOUR_SERVICE_ROLE_KEY' // Use service role key here, not anon
+)
 
-export default async function handler(req, res) {
+export async function dailyReset() {
   try {
-    await dailyReset();
-    res.status(200).send('✅ Daily reset complete');
+    const today = new Date().toISOString().split('T')[0];
+
+    // 1. Archive today's pot total
+    const { data: potData, error: potError } = await supabase
+      .from('transactions')
+      .select('amount')
+      .eq('type', 'entry')
+      .eq('date', today);
+
+    if (potError) throw potError;
+
+    const totalPot = potData ? potData.reduce((sum, tx) => sum + tx.amount, 0) : 0;
+
+    await supabase.from('pot_history').insert([{
+      date: today,
+      total: totalPot,
+      timestamp: new Date().toISOString()
+    }]);
+
+    // 2. Delete today's entries
+    const { error: deleteError } = await supabase
+      .from('entries')
+      .delete()
+      .eq('date', today);
+
+    if (deleteError) throw deleteError;
+
+    // 3. Reset free entry flags
+    const { error: resetError } = await supabase
+      .from('users')
+      .update({ claimed_today: false });
+
+    if (resetError) throw resetError;
+
+    // 4. Log the reset
+    await supabase.from('system_logs').insert([{
+      action: 'daily_reset',
+      status: 'success',
+      pot_archived: totalPot,
+      timestamp: new Date().toISOString()
+    }]);
+
+    console.log(`✅ Daily reset complete. Pot archived: ${totalPot} Pi`);
   } catch (err) {
-    console.error('❌ Cron failed:', err);
-    res.status(500).send('Reset failed');
+    console.error('❌ Daily reset failed:', err);
+
+    await supabase.from('system_logs').insert([{
+      action: 'daily_reset',
+      status: 'error',
+      error_message: err.message || 'Unknown error',
+      timestamp: new Date().toISOString()
+    }]);
   }
 }
