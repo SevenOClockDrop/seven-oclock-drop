@@ -152,8 +152,9 @@
 
   <audio id="coinSound" src="/sounds/coin-drop.mp3" preload="auto"></audio>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-  <script>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
     function startJourney() {
       const params = new URLSearchParams(window.location.search);
       const ref = params.get('ref');
@@ -180,25 +181,21 @@
 
     setInterval(dropCoin, 800);
 
-    // Supabase pot tracker
-    const supabaseUrl = 'https://your-project-ref.supabase.co';
-    const supabaseKey = 'your-anon-key';
-    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+    // Supabase realtime listener
+    const supabaseUrl = 'https://your-project-url.supabase.co';
+    const supabaseKey = 'your-public-anon-key';
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     let currentPot = 0;
 
-    async function fetchPotValue() {
-      const { data, error } = await supabase
-        .from('pot')
-        .select('current_value')
-        .single();
-
-      if (error || !data) return;
-
-      const newPot = data.current_value;
-      animatePot(currentPot, newPot);
-      currentPot = newPot;
-    }
+    supabase
+      .channel('pot-updates')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pot_tracker' }, payload => {
+        const newPot = payload.new.current_amount;
+        animatePot(currentPot, newPot);
+        currentPot = newPot;
+      })
+      .subscribe();
 
     function animatePot(from, to) {
       const potValueEl = document.getElementById('pot-value');
@@ -216,9 +213,6 @@
         if (step >= steps) clearInterval(interval);
       }, 50);
     }
-
-    setInterval(fetchPotValue, 5000);
-    fetchPotValue();
   </script>
 </body>
 </html>
