@@ -1,0 +1,9 @@
+# Ignore environment secrets
+.env
+
+# Node modules (if you install locally)
+node_modules/
+
+# Logs and system files
+*.log
+.DS_Store
