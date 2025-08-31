@@ -14,13 +14,13 @@ export default function SevenDropUI() {
     playSound('zap');
     setClaimed(true);
     setShowOverlay(true);
-    // TODO: logEntry(uid, 'free') + logTransaction(uid, 0, 'entry')
+    // TODO: Supabase: logEntry(uid, 'free') + logTransaction(uid, 0, 'entry')
   }
 
   function handleTierSelect(amount, bonus) {
     playSound('chime');
     setShowOverlay(false);
-    // TODO: logEntry(uid, 'tierX') + logTransaction(uid, amount, 'entry')
+    // TODO: Supabase: logEntry(uid, 'tierX') + logTransaction(uid, amount, 'entry')
   }
 
   return (
