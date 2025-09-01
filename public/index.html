@@ -5,196 +5,58 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Seven O'Clock Drop</title>
   <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background: radial-gradient(circle at center, #0a0a0f, #000);
-      overflow: hidden;
-      font-family: 'Segoe UI', sans-serif;
-      color: white;
-      text-align: center;
-    }
-    h1 {
-      font-size: 2.8em;
-      margin-top: 60px;
-      background: linear-gradient(90deg, #ff00c8, #00f0ff, #ff00c8);
-      background-size: 200% auto;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      animation: shimmer 3s linear infinite;
-    }
-    @keyframes shimmer {
-      0% { background-position: 0% center; }
-      100% { background-position: 200% center; }
-    }
-    .btn, .tier-btn {
-      background: linear-gradient(135deg, #8f00ff, #00f0ff);
-      border: none;
-      color: white;
-      padding: 15px 25px;
-      font-size: 1.1em;
-      border-radius: 8px;
-      cursor: pointer;
-      box-shadow: 0 0 10px #00f0ff;
-      transition: transform 0.2s ease;
-      margin-top: 20px;
-    }
-    .btn:hover, .tier-btn:hover {
-      transform: scale(1.05);
-    }
-    .tier-options {
-      margin-top: 30px;
-    }
-    .coin {
-      position: absolute;
-      width: 30px;
-      height: 30px;
-      background: radial-gradient(circle, #ffd700, #ffcc00);
-      border-radius: 50%;
-      box-shadow: 0 0 10px #ffd700;
-      animation: fall 3s linear infinite;
-    }
-    @keyframes fall {
-      0% { top: -50px; transform: rotate(0deg); opacity: 0.8; }
-      100% { top: 100vh; transform: rotate(360deg); opacity: 0; }
-    }
-    #pot-container {
-      margin-top: 40px;
-      text-align: center;
-    }
-    #pot-label {
-      font-size: 1.1em;
-      color: #00f0ff;
-      margin-bottom: 10px;
-    }
-    #pot-value {
-      font-size: 2em;
-      color: #ffd700;
-      text-shadow: 0 0 10px #ffd700;
-      margin-bottom: 20px;
-    }
-    #pot-meter {
-      width: 80%;
-      height: 20px;
-      background: #222;
-      border-radius: 10px;
-      margin: 0 auto;
-      overflow: hidden;
-      box-shadow: 0 0 10px #00f0ff;
-    }
-    #pot-fill {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, #ff00c8, #00f0ff);
-      transition: width 1s ease-in-out;
-    }
-    .footer {
-      position: absolute;
-      bottom: 20px;
-      width: 100%;
-      font-size: 0.9em;
-      color: #888;
-    }
-    .footer a {
-      color: #00f0ff;
-      text-decoration: none;
-      margin: 0 10px;
-    }
-    .footer a:hover {
-      text-decoration: underline;
-    }
-  </style>
 </head>
 <body>
-  <h1>Seven O’Clock Drop</h1>
-  <p>Every night. One moment. One winner.</p>
-  <p>The countdown begins. Are you in?</p>
+  <h1>Seven O'Clock Drop</h1>
+  <button onclick="claimEntry()">Claim Free Entry</button>
 
-  <button class="btn" onclick="claimEntry()">Claim Free Entry</button>
-
-  <div class="tier-options" id="tierOptions" style="display:none;">
-    <h2 style="color:#00CFFF;">Boost Your Entries</h2>
-    <button class="tier-btn" onclick="processPiPayment(1, '1 Pi Entry')">1 Pi → 1 Entry</button>
-    <button class="tier-btn" onclick="processPiPayment(5, '5 Pi Entry')">5 Pi → 6 Entries</button>
-    <button class="tier-btn" onclick="processPiPayment(10, '10 Pi Entry')">10 Pi → 13 Entries</button>
-  </div>
-
-  <div id="pot-container">
-    <div id="pot-label">Pot is growing...</div>
-    <div id="pot-value">0 Pi</div>
-    <div id="pot-meter"><div id="pot-fill"></div></div>
-  </div>
-
-  <div class="footer">
-    <a href="/privacy.html">Privacy Policy</a>
-    <a href="/terms.html">Terms of Service</a>
-  </div>
-
-  <audio id="coinSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_7c4e2b9b6f.mp3" preload="auto"></audio>
-  <audio id="zapSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_5f8d9b1b6f.mp3" preload="auto"></audio>
-  <audio id="chimeSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_9e3d9b1b6f.mp3" preload="auto"></audio>
-
-  <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-
-    const supabase = createClient(
-      'https://czmxjaggnymvzqvvzicl.supabase.co',
-      'YOUR_ANON_KEY'
-    );
+  <script>
+    let uid = null;
 
     if (window.Pi) {
-      window.Pi.init({ version: "2.0" }, response => {
-        console.log("✅ Pi SDK initialized:", response);
-        const scopes = ['payments'];
-        Pi.authenticate(scopes, payment => {
-          console.log("✅ Authenticated:", payment);
-          localStorage.setItem('user_uid', payment.user.uid);
+      window.Pi.init({ version: "2.0" }, () => {
+        Pi.authenticate(['payments'], auth => {
+          uid = auth.user.uid;
+          alert("✅ Authenticated as: " + uid);
         });
       });
+    } else {
+      alert("❌ Pi SDK not available. Are you in Pi Browser?");
     }
 
-    async function logEntry(uid, tier) {
-      const today = new Date().toISOString().split('T')[0];
-      await supabase.from('entries').insert([{ uid, tier, date: today, timestamp: new Date().toISOString() }]);
-    }
-
-    async function logTransaction(uid, amount, type) {
-      const today = new Date().toISOString().split('T')[0];
-      await supabase.from('transactions').insert([{ uid, amount, type, date: today, timestamp: new Date().toISOString() }]);
-    }
-
-    async function logReferral(referrer, referred) {
-      await supabase.from('referrals').insert([{ referrer_uid: referrer, referred_uid: referred, timestamp: new Date().toISOString() }]);
-    }
-
-    async function claimEntry() {
-      document.getElementById('zapSound').play();
-      document.querySelector('.btn').style.display = 'none';
-      document.getElementById('tierOptions').style.display = 'block';
-
-      const uid = localStorage.getItem('user_uid') || crypto.randomUUID();
-      localStorage.setItem('user_uid', uid);
-
-      await logEntry(uid, 'free');
-      await logTransaction(uid, 0, 'entry');
-
-      const ref = new URLSearchParams(window.location.search).get('ref');
-      if (ref && /^[a-zA-Z0-9_-]{10,}$/.test(ref)) {
-        localStorage.setItem('referrer_uid', ref);
-        await logReferral(ref, uid);
-        await logEntry(ref, 'referral-bonus');
-        await logTransaction(ref, 0, 'referral-bonus');
+    function claimEntry() {
+      if (!uid) {
+        alert("❌ Not authenticated");
+        return;
       }
+
+      alert("🔄 Starting payment...");
+
+      Pi.createPayment({
+        amount: 0,
+        memo: "Seven O'Clock Drop Entry",
+        metadata: { uid },
+        callbacks: {
+          onReadyForServerApproval: async paymentId => {
+            await fetch('/api/approvePayment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ paymentId, uid, amount: 0 })
+            });
+          },
+          onReadyForServerCompletion: async paymentId => {
+            await fetch('/api/approvePayment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ paymentId, uid, amount: 0 })
+            });
+            alert("✅ Entry claimed!");
+          },
+          onCancel: () => alert("❌ Payment cancelled"),
+          onError: err => alert("❌ Payment failed: " + err.message)
+        }
+      });
     }
-
-    function processPiPayment(amount, memo, metadata = {}) {
-      const uid = localStorage.getItem('user_uid') || crypto.randomUUID();
-      localStorage.setItem('user_uid', uid);
-
-      window.Pi.openPayment(
-        {
-          amount,
-          memo,
-          metadata,
-         [43dcd9a7-70db-4a1f-b0ae-981daa162054](https://github.com/Ronnie434/30-days-of-React/tree/22142106cb46f717a1259f84227cc90ed7fe50cc/02_Day_Introduction_to_React%2F02_introduction_to_react.md?citationMarker=43dcd9a7-70db-4a1f-b0ae-981daa162054 "1")
+  </script>
+</body>
+</html>
