@@ -4,28 +4,60 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Seven O'Clock Drop</title>
+  <!-- Pi Network SDK -->
   <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+  <script>
+    // Initialize Pi SDK
+    Pi.init({ version: "2.0", sandbox: true });
+
+    // Scopes for authentication
+    const scopes = ['payments', 'username'];
+
+    // Handle incomplete payments
+    function onIncompletePaymentFound(payment) { 
+      console.log('incomplete payment found');
+      const paymentId = payment.identifier;
+      const txid = payment.transaction.txid;
+      fetch('/payment/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentId, txid, debug: 'cancel' })
+      })
+      .then(res => res.json())
+      .then(data => console.log('Incomplete payment handled:', data))
+      .catch(err => console.error('Error handling incomplete payment:', err));
+    }
+
+    // Authenticate user on page load
+    let uid = null;
+    let accessToken = null;
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.Pi) {
+        Pi.authenticate(scopes, onIncompletePaymentFound)
+          .then(function(auth) {
+            console.log(`Hi there! You're ready to make payments!`);
+            uid = auth.user.uid;
+            accessToken = auth.accessToken;
+            document.getElementById('status').textContent = "✅ Authenticated as: " + uid;
+          })
+          .catch(function(error) {
+            console.error(error);
+            document.getElementById('status').textContent = "❌ Authentication failed. Are you in Pi Browser?";
+          });
+      } else {
+        document.getElementById('status').textContent = "❌ Pi SDK not available. Are you in Pi Browser?";
+      }
+    });
+  </script>
 </head>
 <body>
   <h1>Seven O'Clock Drop</h1>
+  <div id="status" style="margin-bottom:1em;color:gold;">Authenticating...</div>
   <button onclick="claimEntry()">Claim Free Entry</button>
 
   <script>
-    let uid = null;
-
-    if (window.Pi) {
-      window.Pi.init({ version: "2.0" }, () => {
-        Pi.authenticate(['payments'], auth => {
-          uid = auth.user.uid;
-          alert("✅ Authenticated as: " + uid);
-        });
-      });
-    } else {
-      alert("❌ Pi SDK not available. Are you in Pi Browser?");
-    }
-
     function claimEntry() {
-      if (!uid) {
+      if (!uid || !accessToken) {
         alert("❌ Not authenticated");
         return;
       }
@@ -40,14 +72,14 @@
           onReadyForServerApproval: async paymentId => {
             await fetch('/api/approvePayment', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
               body: JSON.stringify({ paymentId, uid, amount: 0 })
             });
           },
           onReadyForServerCompletion: async paymentId => {
             await fetch('/api/approvePayment', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
               body: JSON.stringify({ paymentId, uid, amount: 0 })
             });
             alert("✅ Entry claimed!");
